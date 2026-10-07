@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "TokenStorage",
+  "sourceName": "contracts/RwaERC-3643/token/Token.sol",
+  "abi": [],
+  "bytecode": "0x60806040526008805460ff19169055348015601957600080fd5b50603f8060276000396000f3fe6080604052600080fdfea26469706673582212205d676a1cf32c5297baaf264cc90ed82e01cb6ced3c31fe22fc74f5fb0f9e02df64736f6c63430008140033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212205d676a1cf32c5297baaf264cc90ed82e01cb6ced3c31fe22fc74f5fb0f9e02df64736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "TIRStorage",
+  "sourceName": "contracts/RwaERC-3643/registry/implementation/TrustedIssuersRegistry.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212209aa9cc437099b5d499bf9ca76f67cd3a98483c4db641fcb4b8780e091362b74664736f6c63430008140033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212209aa9cc437099b5d499bf9ca76f67cd3a98483c4db641fcb4b8780e091362b74664736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

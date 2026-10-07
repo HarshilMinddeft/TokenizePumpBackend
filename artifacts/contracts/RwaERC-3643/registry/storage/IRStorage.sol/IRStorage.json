@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IRStorage",
+  "sourceName": "contracts/RwaERC-3643/registry/storage/IRStorage.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212205ca0c481f10c1c771a52c7eb3631b2289f89b42588a6410e1cffe5fc10129bc464736f6c63430008140033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212205ca0c481f10c1c771a52c7eb3631b2289f89b42588a6410e1cffe5fc10129bc464736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

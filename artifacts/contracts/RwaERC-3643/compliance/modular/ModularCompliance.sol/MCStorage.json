@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "MCStorage",
+  "sourceName": "contracts/RwaERC-3643/compliance/modular/ModularCompliance.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220e240a4f449b3ce5e84cea929ae11ad244bcbfa8c8cc6c0d08c27819020fcfb9f64736f6c63430008140033",
+  "deployedBytecode": "0x6080604052600080fdfea2646970667358221220e240a4f449b3ce5e84cea929ae11ad244bcbfa8c8cc6c0d08c27819020fcfb9f64736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

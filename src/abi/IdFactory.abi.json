@@ -1,0 +1,66 @@
+[
+  {
+    "type": "function",
+    "name": "createIdentity",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "_wallet", "type": "address" },
+      { "name": "_salt", "type": "string" }
+    ],
+    "outputs": [{ "name": "", "type": "address" }]
+  },
+  {
+    "type": "function",
+    "name": "createIdentityWithManagementKeys",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "_wallet", "type": "address" },
+      { "name": "_salt", "type": "string" },
+      { "name": "_managementKeys", "type": "bytes32[]" }
+    ],
+    "outputs": [{ "name": "", "type": "address" }]
+  },
+  {
+    "type": "function",
+    "name": "getIdentity",
+    "stateMutability": "view",
+    "inputs": [{ "name": "_wallet", "type": "address" }],
+    "outputs": [{ "name": "", "type": "address" }]
+  },
+  {
+    "type": "function",
+    "name": "isSaltTaken",
+    "stateMutability": "view",
+    "inputs": [{ "name": "_salt", "type": "string" }],
+    "outputs": [{ "name": "", "type": "bool" }]
+  },
+  {
+    "type": "function",
+    "name": "getWallets",
+    "stateMutability": "view",
+    "inputs": [{ "name": "_identity", "type": "address" }],
+    "outputs": [{ "name": "", "type": "address[]" }]
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }]
+  },
+  {
+    "type": "event",
+    "name": "WalletLinked",
+    "anonymous": false,
+    "inputs": [
+      { "name": "wallet", "type": "address", "indexed": true },
+      { "name": "identity", "type": "address", "indexed": true }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "Deployed",
+    "anonymous": false,
+    "inputs": [{ "name": "_addr", "type": "address", "indexed": true }]
+  }
+]

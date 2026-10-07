@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IRStorage",
+  "sourceName": "contracts/RwaERC-3643/registry/implementation/IdentityRegistry.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea264697066735822122063ebb14d056f3e0e5f649866c9d7865ef2753fa7e2180e8ffe1a63b66d22a8cd64736f6c63430008140033",
+  "deployedBytecode": "0x6080604052600080fdfea264697066735822122063ebb14d056f3e0e5f649866c9d7865ef2753fa7e2180e8ffe1a63b66d22a8cd64736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
