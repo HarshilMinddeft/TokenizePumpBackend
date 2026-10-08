@@ -8,6 +8,8 @@ const router = express.Router();
 // ─── Public ───────────────────────────────────────────────────────────────────
 // GET /api/rent/status — subgraph sync state, current rent fee, contract addresses
 router.get('/status', Controller.status);
+// GET /api/rent/streams — the fixed list of income streams and land models
+router.get('/streams', Controller.streams);
 
 // ─── Investor (read-only, by wallet) ──────────────────────────────────────────
 // GET /api/rent/investor/:address/summary   holdings + rent totals
@@ -28,7 +30,12 @@ admin.get('/assets', Controller.assets);
 // GET    /api/rent/admin/assets/:tokenId/holders
 admin.get('/assets/:tokenId/holders', Validator.tokenId, Controller.holders);
 
-// POST   /api/rent/admin/distributions   { tokenId, month, rent, excludeIssuer?, note? }
+// GET    /api/rent/admin/assets/:tokenId/streams   settings + change log
+admin.get('/assets/:tokenId/streams', Validator.tokenId, Controller.assetStreams);
+// PUT    /api/rent/admin/assets/:tokenId/streams   { landModel, incomeStreams, note? }
+admin.put('/assets/:tokenId/streams', Validator.tokenId, Validator.updateStreams, Controller.updateAssetStreams);
+
+// POST   /api/rent/admin/distributions   { tokenId, month, streams: { KEY: amount }, excludeIssuer?, note? }
 admin.post('/distributions', Validator.createDistribution, Controller.createDistribution);
 // GET    /api/rent/admin/distributions   (?tokenId, ?status, ?page, ?limit)
 admin.get('/distributions', Controller.listDistributions);

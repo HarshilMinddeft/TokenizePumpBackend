@@ -2,6 +2,7 @@ const { ethers } = require('ethers');
 const env = require('../config/env');
 const AppError = require('./AppError');
 const { readProvider: provider } = require('./ethers.util');
+const { isFeeConfigNotFound } = require('./feeErrors');
 
 // Minimal human-readable ABIs — only what the backend reads.
 const ABI = {
@@ -62,7 +63,21 @@ async function getStablecoinMeta() {
 async function getRentFee() {
   const fm = feeManager();
   const [version, treasury] = await Promise.all([fm.currentFeeVersion(), fm.treasury()]);
-  const config = await fm.getFeeConfig(version);
+  let config;
+  try {
+    config = await fm.getFeeConfig(version);
+  } catch (err) {
+    // A freshly deployed FeeManager has no config until its owner creates one;
+    // say so instead of surfacing an opaque contract revert as a 500.
+    if (isFeeConfigNotFound(err)) {
+      throw new AppError(
+        'The FeeManager has no fee configuration yet, so the platform fee can\'t be read. ' +
+          'Its owner must run scripts/setFeeConfig.mjs in the contracts repo once after deployment.',
+        503,
+      );
+    }
+    throw err;
+  }
   return { feeVersion: version.toString(), feeBps: Number(config.saleServicerFeeBps), treasury: treasury.toLowerCase() };
 }
 

@@ -21,21 +21,35 @@ class Validator {
   }
 
   static createDistribution(req, _res, next) {
-    const { tokenId, month, rent, excludeIssuer, note } = req.body || {};
+    const { tokenId, month, rent, streams, excludeIssuer, note } = req.body || {};
     if (tokenId === undefined || !/^\d+$/.test(String(tokenId))) {
       return next(new AppError('tokenId is required', 400));
     }
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month || '')) {
       return next(new AppError('month is required as YYYY-MM', 400));
     }
-    // A decimal string or number; decimals are checked against the
-    // stablecoin's own decimals in the service.
-    if (rent === undefined || !/^\d+(\.\d+)?$/.test(String(rent))) {
-      return next(new AppError('rent must be a positive amount, e.g. "3000" or "3000.50"', 400));
+    // Rent is no longer a single figure: it is the sum of the net profit
+    // entered per income stream. Which streams are required, and the amounts'
+    // decimals, are checked against the asset's settings in the service.
+    if (rent !== undefined) {
+      return next(new AppError('rent is no longer accepted — send the net profit per income stream in `streams`', 400));
+    }
+    if (!streams || typeof streams !== 'object' || Array.isArray(streams)) {
+      return next(new AppError('streams is required, e.g. { "FUEL_INCOME": "4000", "CAR_WASH": "900" }', 400));
     }
     if (excludeIssuer !== undefined && typeof excludeIssuer !== 'boolean') {
       return next(new AppError('excludeIssuer must be true or false', 400));
     }
+    if (note !== undefined && (typeof note !== 'string' || note.length > 500)) {
+      return next(new AppError('note must be text up to 500 characters', 400));
+    }
+    next();
+  }
+
+  static updateStreams(req, _res, next) {
+    const { landModel, incomeStreams, note } = req.body || {};
+    if (typeof landModel !== 'string') return next(new AppError('landModel is required', 400));
+    if (!Array.isArray(incomeStreams)) return next(new AppError('incomeStreams must be a list of stream keys', 400));
     if (note !== undefined && (typeof note !== 'string' || note.length > 500)) {
       return next(new AppError('note must be text up to 500 characters', 400));
     }

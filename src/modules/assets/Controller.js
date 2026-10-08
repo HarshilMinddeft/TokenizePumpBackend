@@ -1,6 +1,7 @@
 const BaseController = require('../../core/BaseController');
 const AssetService = require('./Service');
 const AppError = require('../../utils/AppError');
+const { dbErrorToAppError } = require('../../utils/dbErrors');
 
 class Controller extends BaseController {
   #service;
@@ -13,6 +14,11 @@ class Controller extends BaseController {
   /** @param {import('express').Response} res @param {Error} err */
   #catch(res, err) {
     if (err instanceof AppError) return this.httpError(res, err.message, err.statusCode);
+    const dbError = dbErrorToAppError(err);
+    if (dbError) {
+      console.warn('[AssetController] database unreachable:', err.message);
+      return this.httpError(res, dbError.message, dbError.statusCode);
+    }
     console.error('[AssetController]', err);
     return this.internalError(res, 'An unexpected error occurred');
   }

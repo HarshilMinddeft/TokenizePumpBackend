@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { LAND_MODELS } = require('../config/incomeStreams');
 
 // Money fields are stablecoin base units stored as decimal strings — they are
 // BigInt in the calculator and exceed Number's safe range at scale.
@@ -20,7 +21,27 @@ const rentDistributionSchema = new mongoose.Schema(
     // Subgraph block the ledger was read at, for audit.
     indexedBlock: { type: Number, required: true },
 
+    // Σ of the shared streams' net profit below — the one number the holder
+    // split, the fee and the on-chain payout work on.
     rent: { type: String, required: true },
+    // Snapshot of the asset's stream settings at creation, so later settings
+    // changes never rewrite past months. Empty on distributions made before
+    // income streams existed (rent was a single figure then).
+    landModel: { type: String, enum: [...LAND_MODELS, null], default: null },
+    streams: {
+      type: [
+        new mongoose.Schema(
+          {
+            key: { type: String, required: true },
+            label: { type: String, required: true },
+            group: { type: String, required: true },
+            amount: { type: String, required: true }, // stablecoin base units
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     feeBps: { type: Number, required: true },
     feeVersion: { type: String, required: true },
     grossPaid: { type: String, required: true },

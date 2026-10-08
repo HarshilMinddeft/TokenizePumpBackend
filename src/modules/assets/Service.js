@@ -2,6 +2,8 @@ const path = require('path');
 const Asset = require('../../entities/Asset');
 const { uploadFileToIPFS, uploadJSONToIPFS } = require('../../utils/ipfs.util');
 const AppError = require('../../utils/AppError');
+const { normalizeConfig } = require('../rent/streams');
+const { isDuplicateKey } = require('../../utils/dbErrors');
 
 class Service {
   /**
@@ -23,7 +25,8 @@ class Service {
 
   /**
    * Persist a new asset document.
-   * @param {object} data - Asset fields from request body
+   * @param {object} data - Asset fields from request body (incl. optional
+   *   landModel / incomeStreams — see modules/rent/streams.js)
    */
   async addAsset(data) {
     const {
@@ -41,8 +44,18 @@ class Service {
       assetImages,
       assetThumbImages,
       complianceAddress,
+      landModel,
+      incomeStreams,
       active,
     } = data;
+
+    // Optional: when the owner picked the land model and the streams to share
+    // at tokenization. Left out, the schema defaults apply (leased land, fuel
+    // income shared). Rejects unknown streams and land-rent-on-owned-land.
+    const streamSettings =
+      landModel === undefined && incomeStreams === undefined
+        ? {}
+        : normalizeConfig({ landModel, incomeStreams });
 
     const asset = new Asset({
       assetId,
@@ -59,10 +72,18 @@ class Service {
       assetImages,
       assetThumbImages,
       complianceAddress,
+      ...streamSettings,
       active,
     });
 
-    await asset.save();
+    try {
+      await asset.save();
+    } catch (err) {
+      // The same NFT registered twice — typically a retry after a first
+      // attempt whose reply never arrived. Say so; the client treats it as done.
+      if (isDuplicateKey(err)) throw new AppError(`Asset ${assetId} is already registered`, 409);
+      throw err;
+    }
     return asset;
   }
 

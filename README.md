@@ -81,7 +81,7 @@ All routes are prefixed `/api/{module}` and auto-loaded from `src/modules/`.
 |--------|------|-------------|
 | POST | `/nftUpload` | Upload NFT image to IPFS |
 | POST | `/metadataUpload` | Upload JSON metadata to IPFS |
-| POST | `/addAsset` | Add a new asset |
+| POST | `/addAsset` | Add a new asset (optional `landModel` `RENT`\|`APPRECIATION` and `incomeStreams: [...]`) |
 | GET | `/getOwnerAsset?ownerAddress=0x...` | Fetch owner's assets |
 | GET | `/marketPlace/getAllAssetsSummary` | Marketplace listing |
 | GET | `/marketPlace/getAssetById/:id` | Asset detail |
@@ -119,13 +119,16 @@ worked scenarios: [RentDist.md](RentDist.md).
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/status` | Subgraph sync state, current rent fee, contract addresses |
+| GET | `/streams` | The fixed list of income streams and land models |
 | GET | `/investor/:address/summary` | Holdings, rent received, pending rent |
 | GET | `/investor/:address/payouts` | Rent history per month (`?page&limit`) |
 | GET | `/investor/:address/activity` | Buys, sells, transfers (`?page&limit`) |
 | GET | `/admin/overview` | Fee, sync state, admin wallet balance/allowance, totals |
 | GET | `/admin/assets` | Fractionalized assets + last distributed month |
 | GET | `/admin/assets/:tokenId/holders` | Current holders |
-| POST | `/admin/distributions` | `{ tokenId, month: 'YYYY-MM', rent, excludeIssuer?, note? }` → DRAFT |
+| GET | `/admin/assets/:tokenId/streams` | The asset's income-stream settings + change log |
+| PUT | `/admin/assets/:tokenId/streams` | `{ landModel, incomeStreams, note? }` → update settings (logged) |
+| POST | `/admin/distributions` | `{ tokenId, month: 'YYYY-MM', streams: { FUEL_INCOME: '4000', … }, excludeIssuer?, note? }` → DRAFT. `streams` is the net profit per shared income stream; their sum is the month's rent |
 | GET | `/admin/distributions` | List (`?tokenId&status&page&limit`) |
 | GET | `/admin/distributions/:id` | Allocations + batches, each with its `distribute` call args |
 | POST | `/admin/distributions/:id/batches/:batchIndex/submit` | `{ txHash }` after the wallet sends a batch |

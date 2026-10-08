@@ -1,6 +1,7 @@
 const BaseController = require('../../core/BaseController');
 const RentService = require('./Service');
 const AppError = require('../../utils/AppError');
+const { dbErrorToAppError } = require('../../utils/dbErrors');
 
 const pageOf = (query) => ({
   page: Math.max(1, Number(query.page) || 1),
@@ -11,6 +12,11 @@ class Controller extends BaseController {
   /** @param {import('express').Response} res @param {Error} err */
   #catch(res, err) {
     if (err instanceof AppError) return this.httpError(res, err.message, err.statusCode);
+    const dbError = dbErrorToAppError(err);
+    if (dbError) {
+      console.warn('[RentController] database unreachable:', err.message);
+      return this.httpError(res, dbError.message, dbError.statusCode);
+    }
     console.error('[RentController]', err);
     return this.internalError(res, 'An unexpected error occurred');
   }
@@ -43,12 +49,21 @@ class Controller extends BaseController {
     'Activity fetched',
   );
 
+  streams = this.#handle(() => RentService.getStreamCatalog(), 'Income streams fetched');
+
   // ── Admin ───────────────────────────────────────────────────────────────────
   overview = this.#handle((req) => RentService.getOverview(req.admin.address), 'Overview fetched');
 
   assets = this.#handle(() => RentService.listAssets(), 'Assets fetched');
 
   holders = this.#handle((req) => RentService.getHolders(req.params.tokenId), 'Holders fetched');
+
+  assetStreams = this.#handle((req) => RentService.getAssetStreams(req.params.tokenId), 'Asset income streams fetched');
+
+  updateAssetStreams = this.#handle(
+    (req) => RentService.updateAssetStreams(req.params.tokenId, req.body, req.admin.address),
+    'Asset income streams updated',
+  );
 
   createDistribution = async (req, res) => {
     try {

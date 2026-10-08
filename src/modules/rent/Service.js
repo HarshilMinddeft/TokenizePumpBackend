@@ -1,6 +1,7 @@
 const { ethers } = require('ethers');
 const Asset = require('../../entities/Asset');
 const RentDistribution = require('../../entities/RentDistribution');
+const AssetStreamChange = require('../../entities/AssetStreamChange');
 const RentAllocation = require('../../entities/RentAllocation');
 const RentDistributionBatch = require('../../entities/RentDistributionBatch');
 const env = require('../../config/env');
@@ -9,6 +10,8 @@ const subgraph = require('../../utils/subgraph.util');
 const chain = require('../../utils/contracts.util');
 const { readProvider: provider } = require('../../utils/ethers.util');
 const calc = require('./calculator');
+const streamsLib = require('./streams');
+const { STREAMS, LAND_MODELS } = require('../../config/incomeStreams');
 
 // ─── Subgraph queries ─────────────────────────────────────────────────────────
 
@@ -93,6 +96,35 @@ async function assetNames(tokenIds) {
   );
 }
 
+const DEFAULT_STREAMS = ['FUEL_INCOME']; // matches the Asset schema default
+
+const configOf = (doc) => ({
+  landModel: doc.landModel ?? 'RENT',
+  incomeStreams: doc.incomeStreams ?? DEFAULT_STREAMS,
+});
+
+/** assetId → { landModel, incomeStreams } for the assets registered in the backend. */
+async function assetConfigs(tokenIds) {
+  const docs = await Asset.find(
+    { assetId: { $in: tokenIds.map(String) } },
+    { assetId: 1, landModel: 1, incomeStreams: 1 },
+  ).lean();
+  return new Map(docs.map((d) => [d.assetId, configOf(d)]));
+}
+
+/** The streams an asset shares with holders; the asset must be registered. */
+async function getAssetConfig(tokenId) {
+  const configs = await assetConfigs([tokenId]);
+  const config = configs.get(String(tokenId));
+  if (!config) {
+    throw new AppError(
+      `Asset ${tokenId} isn't registered in the backend, so its income streams aren't known — register it first`,
+      409,
+    );
+  }
+  return config;
+}
+
 /**
  * Holdings must add up on both sides before rent is computed from them:
  * Σ subgraph holdings == subgraph currentSupply == on-chain totalSupply,
@@ -171,7 +203,8 @@ class Service {
 
   async listAssets() {
     const { assets } = await subgraph.query(Q.assets);
-    const names = await assetNames(assets.map((p) => p.id));
+    const ids = assets.map((p) => p.id);
+    const [names, configs] = await Promise.all([assetNames(ids), assetConfigs(ids)]);
     const lastMonths = await RentDistribution.aggregate([
       { $match: { status: { $ne: 'CANCELLED' } } },
       { $group: { _id: '$tokenId', lastMonth: { $max: '$month' }, count: { $sum: 1 } } },
@@ -181,6 +214,8 @@ class Service {
     return assets.map((p) => ({
       ...p,
       ...(names.get(p.id) ?? { assetName: null, thumbnail: null }),
+      // null = not registered in the backend, so no stream settings exist yet
+      ...(configs.get(p.id) ?? { landModel: null, incomeStreams: null }),
       lastDistributedMonth: last.get(p.id)?.lastMonth ?? null,
       distributionCount: last.get(p.id)?.count ?? 0,
     }));
@@ -194,11 +229,76 @@ class Service {
     return { asset: { ...asset, ...(names.get(asset.id) ?? {}) }, holders: holdings };
   }
 
+  /** The platform's fixed list of income streams and land models. */
+  getStreamCatalog() {
+    return { streams: STREAMS, landModels: LAND_MODELS };
+  }
+
+  /** An asset's income-stream settings, with its change log (newest first). */
+  async getAssetStreams(tokenId) {
+    const tokenKey = String(tokenId);
+    const doc = await Asset.findOne({ assetId: tokenKey }, { assetName: 1, landModel: 1, incomeStreams: 1 }).lean();
+    if (!doc) throw new AppError(`Asset ${tokenKey} isn't registered in the backend`, 404);
+
+    const log = await AssetStreamChange.find({ tokenId: tokenKey }).sort({ createdAt: -1 }).limit(50).lean();
+    return { tokenId: tokenKey, assetName: doc.assetName, ...configOf(doc), catalog: STREAMS, log };
+  }
+
+  /**
+   * Changes which income streams an asset shares with its holders (and
+   * whether its land is leased or owner-held). Allowed at any time; every
+   * change is logged. Distributions already created keep the snapshot they
+   * were made with, so past months never change.
+   */
+  async updateAssetStreams(tokenId, { landModel, incomeStreams, note = '' }, adminAddress) {
+    const tokenKey = String(tokenId);
+    const next = streamsLib.normalizeConfig({ landModel, incomeStreams });
+
+    const doc = await Asset.findOne({ assetId: tokenKey });
+    if (!doc) throw new AppError(`Asset ${tokenKey} isn't registered in the backend`, 404);
+
+    const before = configOf(doc);
+    const sameStreams =
+      before.incomeStreams.length === next.incomeStreams.length &&
+      [...before.incomeStreams].sort().every((k, i) => k === [...next.incomeStreams].sort()[i]);
+    if (before.landModel === next.landModel && sameStreams) {
+      throw new AppError('Nothing changed — these are already the asset\'s income-stream settings', 400);
+    }
+
+    doc.landModel = next.landModel;
+    doc.incomeStreams = next.incomeStreams;
+    await doc.save();
+
+    // The log must never disagree with the settings: if it can't be written,
+    // put the previous settings back rather than leave an unrecorded change.
+    try {
+      await AssetStreamChange.create({
+        tokenId: tokenKey,
+        changedBy: lower(adminAddress),
+        before: { landModel: before.landModel, incomeStreams: [...before.incomeStreams] },
+        after: next,
+        note,
+      });
+    } catch (err) {
+      doc.landModel = before.landModel;
+      doc.incomeStreams = before.incomeStreams;
+      await doc.save().catch(() => {});
+      throw err;
+    }
+
+    return this.getAssetStreams(tokenKey);
+  }
+
   /**
    * Computes a month's rent split and saves it as a DRAFT for the admin to
    * review and sign. See calculator.js for the model.
+   *
+   * `streams` is the net profit per income stream, e.g.
+   * { FUEL_INCOME: '4000', CAR_WASH: '900' }: only the streams the asset
+   * shares, each entered (0 if it earned nothing). Their sum is the month's
+   * rent. See streams.js.
    */
-  async createDistribution({ tokenId, month, rent, excludeIssuer = false, note = '' }, adminAddress) {
+  async createDistribution({ tokenId, month, streams, excludeIssuer = false, note = '' }, adminAddress) {
     const admin = lower(adminAddress);
     const tokenKey = String(tokenId);
 
@@ -255,13 +355,12 @@ class Service {
       chain.getMaxBatchSize(),
     ]);
 
-    let rentUnits;
-    try {
-      rentUnits = ethers.parseUnits(String(rent), stable.decimals);
-    } catch {
-      throw new AppError(`rent must be a number with at most ${stable.decimals} decimals`, 400);
-    }
-    if (rentUnits <= 0n) throw new AppError('rent must be greater than 0', 400);
+    const config = await getAssetConfig(tokenKey);
+    const { streams: streamSnapshot, total: rentUnits } = streamsLib.buildStreamSnapshot(
+      config,
+      streams,
+      stable.decimals,
+    );
 
     const ledger = await subgraph.queryAllByOrdinal(Q.ledger, 'balanceChanges', {
       asset: tokenKey,
@@ -307,6 +406,8 @@ class Service {
         monthEnd: new Date(bounds.end * 1000),
         indexedBlock: indexed.number,
         rent: rentUnits.toString(),
+        landModel: config.landModel,
+        streams: streamSnapshot,
         feeBps: fee.feeBps,
         feeVersion: fee.feeVersion,
         grossPaid: result.totals.grossPaid.toString(),
@@ -619,6 +720,7 @@ class Service {
                 // What the investor dashboard needs to show how each
                 // amount was worked out.
                 rent: '$d.rent',
+                streams: '$d.streams',
                 totalShares: '$d.totalShares',
                 feeBps: '$d.feeBps',
                 periodStart: '$d.periodStart',
@@ -637,7 +739,14 @@ class Service {
         },
       },
     ]);
-    return { items: result.items, total: result.total[0]?.count ?? 0, page, limit };
+    // Each holder's gross share, split across the month's income streams
+    // (exact — the parts add up to grossAmount). Empty for months paid before
+    // income streams were itemised.
+    const items = result.items.map(({ streams, ...row }) => ({
+      ...row,
+      streamBreakdown: streamsLib.splitByStream(BigInt(row.grossAmount), streams),
+    }));
+    return { items, total: result.total[0]?.count ?? 0, page, limit };
   }
 
   async getInvestorActivity(address, { page = 1, limit = 20 }) {

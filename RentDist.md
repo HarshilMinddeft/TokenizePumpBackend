@@ -20,7 +20,8 @@ tokenSeconds  = Σ (balance × seconds held at that balance)      per holder
 grossAmount   = rate × tokenSeconds = rent × tokenSeconds / (totalShares × secondsInMonth)
 ```
 
-- `rent` — the asset's full rent for the month, entered by the admin.
+- `rent` — the month's distributable amount: the sum of the net profit the
+  admin enters for each income stream the asset shares (see below).
 - `totalShares` — shares minted at fractionalization (fixed; minting is sealed).
 - `secondsInMonth` — the calendar month in UTC (28–31 days).
 
@@ -28,6 +29,31 @@ It is simplest to think in **token-days**: with 100 shares in a 30-day month
 and rent of 3,000, one share held for one day earns
 `3,000 / (100 × 30) = $1`. The code works in seconds, so a purchase at 15:00
 earns from 15:00, not from midnight.
+
+### Income streams
+
+A fuel pump earns from several businesses. The platform has one fixed list —
+**Land rent, Fuel income, Car wash, Service center, ATMs & tenant services,
+Convenience store & mall, EV charging** — and each asset shares a chosen
+subset of them with its holders. Rules:
+
+- **All or nothing per stream.** A stream is either shared in full or not at
+  all; a stream that is not shared is fixed at 0 (not entered, not recorded).
+- **Land.** At tokenization the owner picks `RENT` (the land is leased, so
+  *Land rent* is a stream) or `APPRECIATION` (the land is owned by the fuel
+  owner: no land rent, holders benefit from the asset price rising). Land rent
+  cannot be shared under `APPRECIATION`.
+- **Amounts are net profit**, entered after the stream's operating costs, and
+  never negative (enter 0 if a stream earned nothing that month).
+- `rent` = Σ of the shared streams' amounts. Everything after that — the
+  holder split, the fee, the batches and the on-chain `distribute` — works on
+  that one total, exactly as above; **no contract change is involved**.
+- Each distribution stores a **snapshot** of the streams it was made with, so
+  changing an asset's settings later never rewrites past months. Settings can
+  be changed by an admin at any time; every change is logged (who, when,
+  before, after, note).
+- An investor's gross for a month is split across the streams in proportion to
+  each stream's share of the total (exact; the parts add up to the gross).
 
 ### Why this model
 
