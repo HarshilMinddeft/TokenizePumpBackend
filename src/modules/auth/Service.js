@@ -20,7 +20,7 @@ class Service {
     if (!(await isAdminWallet(wallet))) throw new AppError('This wallet is not an admin', 403);
 
     const message = [
-      'Sign in to the TrueFraction admin panel.',
+      'Sign in to the VARELO admin panel.',
       '',
       `Wallet: ${ethers.getAddress(wallet)}`,
       `Nonce: ${crypto.randomBytes(16).toString('hex')}`,

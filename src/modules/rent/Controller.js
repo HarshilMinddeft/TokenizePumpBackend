@@ -46,7 +46,7 @@ class Controller extends BaseController {
   // ── Admin ───────────────────────────────────────────────────────────────────
   overview = this.#handle((req) => RentService.getOverview(req.admin.address), 'Overview fetched');
 
-  properties = this.#handle(() => RentService.listProperties(), 'Properties fetched');
+  assets = this.#handle(() => RentService.listAssets(), 'Assets fetched');
 
   holders = this.#handle((req) => RentService.getHolders(req.params.tokenId), 'Holders fetched');
 

@@ -1,5 +1,5 @@
 const { ethers } = require('ethers');
-const Property = require('../../entities/Property');
+const Asset = require('../../entities/Asset');
 const RentDistribution = require('../../entities/RentDistribution');
 const RentAllocation = require('../../entities/RentAllocation');
 const RentDistributionBatch = require('../../entities/RentDistributionBatch');
@@ -12,25 +12,25 @@ const calc = require('./calculator');
 
 // ─── Subgraph queries ─────────────────────────────────────────────────────────
 
-const PROPERTY_FIELDS = `
+const ASSET_FIELDS = `
   id tokenId shareToken issuer totalShares currentSupply holderCount
   listingOwner listingActive listingRemaining pricePerToken
   buyBackActive redeemed fractionalizedAt totalRentDistributed totalRentFees
 `;
 
 const Q = {
-  property: `query($id: ID!) { property(id: $id) { ${PROPERTY_FIELDS} } }`,
-  properties: `{ properties(first: 1000, orderBy: fractionalizedAt, orderDirection: desc) { ${PROPERTY_FIELDS} } }`,
+  asset: `query($id: ID!) { asset(id: $id) { ${ASSET_FIELDS} } }`,
+  assets: `{ assets(first: 1000, orderBy: fractionalizedAt, orderDirection: desc) { ${ASSET_FIELDS} } }`,
   // Paged by holder id (Bytes), since holdings have no ordinal.
-  holdings: `query($property: String!, $first: Int!, $after: Bytes!) {
+  holdings: `query($asset: String!, $first: Int!, $after: Bytes!) {
     holdings(first: $first, orderBy: id, orderDirection: asc,
-      where: { property: $property, balance_gt: "0", id_gt: $after }) {
+      where: { asset: $asset, balance_gt: "0", id_gt: $after }) {
       id holder balance firstAcquiredAt rentReceived
     }
   }`,
-  ledger: `query($property: String!, $before: BigInt!, $first: Int!, $after: BigInt!) {
+  ledger: `query($asset: String!, $before: BigInt!, $first: Int!, $after: BigInt!) {
     balanceChanges(first: $first, orderBy: ordinal, orderDirection: asc,
-      where: { property: $property, timestamp_lt: $before, ordinal_gt: $after }) {
+      where: { asset: $asset, timestamp_lt: $before, ordinal_gt: $after }) {
       holder delta timestamp ordinal
     }
   }`,
@@ -40,14 +40,14 @@ const Q = {
   investorHoldings: `query($holder: Bytes!) {
     holdings(first: 1000, where: { holder: $holder }) {
       balance firstAcquiredAt rentReceived
-      property { ${PROPERTY_FIELDS} }
+      asset { ${ASSET_FIELDS} }
     }
   }`,
   investorActivity: `query($who: Bytes!, $first: Int!, $skip: Int!) {
     activities(first: $first, skip: $skip, orderBy: ordinal, orderDirection: desc,
       where: { or: [{ from: $who }, { to: $who }] }) {
       id type from to amount pricePerToken totalValue fee orderId timestamp txHash
-      property { id }
+      asset { id }
     }
   }`,
 };
@@ -61,10 +61,10 @@ const toIso = (unixSeconds) => new Date(unixSeconds * 1000).toISOString();
 const batchIdFor = (distributionId, batchIndex) =>
   ethers.solidityPackedKeccak256(['string', 'uint256'], [distributionId.toString(), batchIndex]).toLowerCase();
 
-async function fetchProperty(tokenId) {
-  const { property } = await subgraph.query(Q.property, { id: String(tokenId) });
-  if (!property) throw new AppError(`Property ${tokenId} is not fractionalized`, 404);
-  return property;
+async function fetchAsset(tokenId) {
+  const { asset } = await subgraph.query(Q.asset, { id: String(tokenId) });
+  if (!asset) throw new AppError(`Asset ${tokenId} is not fractionalized`, 404);
+  return asset;
 }
 
 async function fetchHoldings(tokenId) {
@@ -72,7 +72,7 @@ async function fetchHoldings(tokenId) {
   let after = '0x';
   for (;;) {
     const { holdings } = await subgraph.query(Q.holdings, {
-      property: String(tokenId),
+      asset: String(tokenId),
       first: subgraph.PAGE_SIZE,
       after,
     });
@@ -82,14 +82,14 @@ async function fetchHoldings(tokenId) {
   }
 }
 
-/** propertyId → { propertyName, thumbnail } from the backend's Property collection. */
-async function propertyNames(tokenIds) {
-  const docs = await Property.find(
-    { propertyId: { $in: tokenIds.map(String) } },
-    { propertyId: 1, propertyName: 1, propertyThumbImages: 1 },
+/** assetId → { assetName, thumbnail } from the backend's Asset collection. */
+async function assetNames(tokenIds) {
+  const docs = await Asset.find(
+    { assetId: { $in: tokenIds.map(String) } },
+    { assetId: 1, assetName: 1, assetThumbImages: 1 },
   ).lean();
   return new Map(
-    docs.map((d) => [d.propertyId, { propertyName: d.propertyName, thumbnail: d.propertyThumbImages?.[0] ?? null }]),
+    docs.map((d) => [d.assetId, { assetName: d.assetName, thumbnail: d.assetThumbImages?.[0] ?? null }]),
   );
 }
 
@@ -98,15 +98,15 @@ async function propertyNames(tokenIds) {
  * Σ subgraph holdings == subgraph currentSupply == on-chain totalSupply,
  * all at the subgraph's indexed block.
  */
-async function checkSupply(property, indexedBlockNumber) {
-  const holdings = await fetchHoldings(property.id);
+async function checkSupply(asset, indexedBlockNumber) {
+  const holdings = await fetchHoldings(asset.id);
   const sum = holdings.reduce((a, h) => a + BigInt(h.balance), 0n);
-  const onChain = await chain.erc20(property.shareToken).totalSupply({ blockTag: indexedBlockNumber });
-  const indexed = BigInt(property.currentSupply);
+  const onChain = await chain.erc20(asset.shareToken).totalSupply({ blockTag: indexedBlockNumber });
+  const indexed = BigInt(asset.currentSupply);
 
   if (sum !== indexed || indexed !== onChain) {
     throw new AppError(
-      `Holdings don't reconcile for property ${property.id}: holdings sum ${sum}, ` +
+      `Holdings don't reconcile for asset ${asset.id}: holdings sum ${sum}, ` +
         `indexed supply ${indexed}, on-chain supply ${onChain}. Not safe to distribute.`,
       409,
     );
@@ -169,29 +169,29 @@ class Service {
     };
   }
 
-  async listProperties() {
-    const { properties } = await subgraph.query(Q.properties);
-    const names = await propertyNames(properties.map((p) => p.id));
+  async listAssets() {
+    const { assets } = await subgraph.query(Q.assets);
+    const names = await assetNames(assets.map((p) => p.id));
     const lastMonths = await RentDistribution.aggregate([
       { $match: { status: { $ne: 'CANCELLED' } } },
       { $group: { _id: '$tokenId', lastMonth: { $max: '$month' }, count: { $sum: 1 } } },
     ]);
     const last = new Map(lastMonths.map((r) => [r._id, r]));
 
-    return properties.map((p) => ({
+    return assets.map((p) => ({
       ...p,
-      ...(names.get(p.id) ?? { propertyName: null, thumbnail: null }),
+      ...(names.get(p.id) ?? { assetName: null, thumbnail: null }),
       lastDistributedMonth: last.get(p.id)?.lastMonth ?? null,
       distributionCount: last.get(p.id)?.count ?? 0,
     }));
   }
 
   async getHolders(tokenId) {
-    const property = await fetchProperty(tokenId);
+    const asset = await fetchAsset(tokenId);
     const holdings = await fetchHoldings(tokenId);
     holdings.sort((a, b) => (BigInt(b.balance) > BigInt(a.balance) ? 1 : -1));
-    const names = await propertyNames([tokenId]);
-    return { property: { ...property, ...(names.get(property.id) ?? {}) }, holders: holdings };
+    const names = await assetNames([tokenId]);
+    return { asset: { ...asset, ...(names.get(asset.id) ?? {}) }, holders: holdings };
   }
 
   /**
@@ -232,22 +232,22 @@ class Service {
     }
     if (periodEnd <= bounds.start) throw new AppError('Nothing indexed for this month yet', 409);
 
-    const property = await fetchProperty(tokenKey);
-    if (Number(property.fractionalizedAt) >= periodEnd) {
-      throw new AppError(`Property ${tokenKey} had no shares during ${month}`, 400);
+    const asset = await fetchAsset(tokenKey);
+    if (Number(asset.fractionalizedAt) >= periodEnd) {
+      throw new AppError(`Asset ${tokenKey} had no shares during ${month}`, 400);
     }
 
     const activeKey = `${tokenKey}:${month}`;
     const existing = await RentDistribution.findOne({ activeKey }, { _id: 1, status: 1 }).lean();
     if (existing) {
       throw new AppError(
-        `Rent for property ${tokenKey} in ${month} already has a ${existing.status} distribution (${existing._id}). ` +
+        `Rent for asset ${tokenKey} in ${month} already has a ${existing.status} distribution (${existing._id}). ` +
           'Cancel that draft first to redo it.',
         409,
       );
     }
 
-    await checkSupply(property, indexed.number);
+    await checkSupply(asset, indexed.number);
 
     const [fee, stable, maxBatchSize] = await Promise.all([
       chain.getRentFee(),
@@ -264,7 +264,7 @@ class Service {
     if (rentUnits <= 0n) throw new AppError('rent must be greater than 0', 400);
 
     const ledger = await subgraph.queryAllByOrdinal(Q.ledger, 'balanceChanges', {
-      property: tokenKey,
+      asset: tokenKey,
       before: String(periodEnd),
     });
 
@@ -275,10 +275,10 @@ class Service {
         monthStart: bounds.start,
         monthEnd: bounds.end,
         periodEnd,
-        totalShares: BigInt(property.totalShares),
+        totalShares: BigInt(asset.totalShares),
         rent: rentUnits,
         feeBps: BigInt(fee.feeBps),
-        issuer: lower(property.issuer),
+        issuer: lower(asset.issuer),
         excludeIssuer: Boolean(excludeIssuer),
         selfWallet: admin,
       });
@@ -291,16 +291,16 @@ class Service {
       throw new AppError('Nobody is payable for this month with these settings — nothing to distribute', 400);
     }
     const batches = calc.buildBatches(result.allocations, result.totals.fee, maxBatchSize);
-    const names = await propertyNames([tokenKey]);
+    const names = await assetNames([tokenKey]);
 
     let distribution;
     try {
       distribution = await RentDistribution.create({
         tokenId: tokenKey,
-        propertyName: names.get(tokenKey)?.propertyName ?? null,
-        shareToken: property.shareToken,
-        issuer: property.issuer,
-        totalShares: property.totalShares,
+        assetName: names.get(tokenKey)?.assetName ?? null,
+        shareToken: asset.shareToken,
+        issuer: asset.issuer,
+        totalShares: asset.totalShares,
         month,
         periodStart: new Date(bounds.start * 1000),
         periodEnd: new Date(periodEnd * 1000),
@@ -328,7 +328,7 @@ class Service {
       });
     } catch (err) {
       if (err?.code === 11000) {
-        throw new AppError(`Rent for property ${tokenKey} in ${month} was just created by another request`, 409);
+        throw new AppError(`Rent for asset ${tokenKey} in ${month} was just created by another request`, 409);
       }
       throw err;
     }
@@ -546,7 +546,7 @@ class Service {
   async getInvestorSummary(address) {
     const holder = lower(address);
     const { holdings } = await subgraph.query(Q.investorHoldings, { holder });
-    const names = await propertyNames(holdings.map((h) => h.property.id));
+    const names = await assetNames(holdings.map((h) => h.asset.id));
 
     const [pending, lastPaid] = await Promise.all([
       RentAllocation.aggregate([
@@ -565,25 +565,25 @@ class Service {
       address: holder,
       stablecoin: await chain.getStablecoinMeta(),
       totals: {
-        propertiesHeld: holdings.filter((h) => BigInt(h.balance) > 0n).length,
+        assetsHeld: holdings.filter((h) => BigInt(h.balance) > 0n).length,
         sharesHeld: holdings.reduce((a, h) => a + BigInt(h.balance), 0n).toString(),
         rentReceived: rentReceived.toString(),
         pendingRent: pendingRent.toString(),
         lastPayoutAt: lastPaid?.paidAt ?? null,
         lastPayoutAmount: lastPaid?.netAmount ?? null,
       },
-      // Includes properties fully sold but that paid this wallet rent before.
+      // Includes assets fully sold but that paid this wallet rent before.
       holdings: holdings
         .filter((h) => BigInt(h.balance) > 0n || BigInt(h.rentReceived) > 0n)
         .map((h) => ({
-          tokenId: h.property.id,
-          ...(names.get(h.property.id) ?? { propertyName: null, thumbnail: null }),
+          tokenId: h.asset.id,
+          ...(names.get(h.asset.id) ?? { assetName: null, thumbnail: null }),
           balance: h.balance,
-          totalShares: h.property.totalShares,
-          ownershipPercent: h.property.totalShares === '0'
+          totalShares: h.asset.totalShares,
+          ownershipPercent: h.asset.totalShares === '0'
             ? '0'
-            : ((Number(h.balance) / Number(h.property.totalShares)) * 100).toFixed(4),
-          pricePerToken: h.property.pricePerToken,
+            : ((Number(h.balance) / Number(h.asset.totalShares)) * 100).toFixed(4),
+          pricePerToken: h.asset.pricePerToken,
           firstAcquiredAt: h.firstAcquiredAt,
           rentReceived: h.rentReceived,
         })),
@@ -608,7 +608,7 @@ class Service {
                 _id: 0,
                 distributionId: '$d._id',
                 tokenId: 1,
-                propertyName: '$d.propertyName',
+                assetName: '$d.assetName',
                 month: 1,
                 daysHeld: 1,
                 averageBalance: 1,
@@ -647,12 +647,12 @@ class Service {
       first: limit,
       skip: (page - 1) * limit,
     });
-    const names = await propertyNames([...new Set(activities.map((a) => a.property.id))]);
+    const names = await assetNames([...new Set(activities.map((a) => a.asset.id))]);
     return {
       items: activities.map((a) => ({
         ...a,
-        tokenId: a.property.id,
-        propertyName: names.get(a.property.id)?.propertyName ?? null,
+        tokenId: a.asset.id,
+        assetName: names.get(a.asset.id)?.assetName ?? null,
         direction: a.to === who ? 'IN' : 'OUT',
       })),
       page,

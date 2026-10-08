@@ -13,22 +13,22 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-// POST /api/properties/nftUpload
+// POST /api/assets/nftUpload
 router.post('/nftUpload', upload.single('file'), Validator.nftUpload, Controller.nftUpload);
 
-// POST /api/properties/metadataUpload
+// POST /api/assets/metadataUpload
 router.post('/metadataUpload', Controller.uploadMetadata);
 
-// POST /api/properties/addProperty
-router.post('/addProperty', Validator.addProperty, Controller.addProperty);
+// POST /api/assets/addAsset
+router.post('/addAsset', Validator.addAsset, Controller.addAsset);
 
-// GET  /api/properties/getOwnerProperty?ownerAddress=0x...
-router.get('/getOwnerProperty', Validator.getPropertiesByOwner, Controller.getPropertiesByOwner);
+// GET  /api/assets/getOwnerAsset?ownerAddress=0x...
+router.get('/getOwnerAsset', Validator.getAssetsByOwner, Controller.getAssetsByOwner);
 
-// GET  /api/properties/marketPlace/getAllPropertiesSummary
-router.get('/marketPlace/getAllPropertiesSummary', Controller.getAllPropertiesSummary);
+// GET  /api/assets/marketPlace/getAllAssetsSummary
+router.get('/marketPlace/getAllAssetsSummary', Controller.getAllAssetsSummary);
 
-// GET  /api/properties/marketPlace/getPropertyById/:id
-router.get('/marketPlace/getPropertyById/:id', Validator.getPropertyById, Controller.getPropertyById);
+// GET  /api/assets/marketPlace/getAssetById/:id
+router.get('/marketPlace/getAssetById/:id', Validator.getAssetById, Controller.getAssetById);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 # FractionalRWA Backend
 
-Production-grade Node.js/Express backend for **TrueFraction** — a fractional real-world asset (RWA) tokenisation platform built on the Sonic testnet using the ERC-3643 compliance standard.
+Production-grade Node.js/Express backend for **VARELO** — a fractional real-world asset (RWA) tokenisation platform built on the Sonic testnet using the ERC-3643 compliance standard.
 
 ---
 
@@ -30,12 +30,12 @@ src/
 │   ├── BaseController.js Shared HTTP response helpers
 │   └── RouteLoader.js    Auto-discovers modules/*/routes.js
 ├── entities/             Mongoose Models / Schemas
-│   ├── Property.js
+│   ├── Asset.js
 │   └── User.js
 ├── middleware/
 │   └── errorHandler.js   Global Express error handler
 ├── modules/
-│   ├── properties/       Property CRUD + IPFS upload domain
+│   ├── assets/           Asset CRUD + IPFS upload domain
 │   │   ├── Controller.js
 │   │   ├── Service.js
 │   │   ├── Validator.js
@@ -75,16 +75,16 @@ npm start
 
 All routes are prefixed `/api/{module}` and auto-loaded from `src/modules/`.
 
-### Properties — `/api/properties`
+### Assets — `/api/assets`
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/nftUpload` | Upload NFT image to IPFS |
 | POST | `/metadataUpload` | Upload JSON metadata to IPFS |
-| POST | `/addProperty` | Add a new property |
-| GET | `/getOwnerProperty?ownerAddress=0x...` | Fetch owner's properties |
-| GET | `/marketPlace/getAllPropertiesSummary` | Marketplace listing |
-| GET | `/marketPlace/getPropertyById/:id` | Property detail |
+| POST | `/addAsset` | Add a new asset |
+| GET | `/getOwnerAsset?ownerAddress=0x...` | Fetch owner's assets |
+| GET | `/marketPlace/getAllAssetsSummary` | Marketplace listing |
+| GET | `/marketPlace/getAssetById/:id` | Asset detail |
 
 ### Users — `/api/users`
 
@@ -123,8 +123,8 @@ worked scenarios: [RentDist.md](RentDist.md).
 | GET | `/investor/:address/payouts` | Rent history per month (`?page&limit`) |
 | GET | `/investor/:address/activity` | Buys, sells, transfers (`?page&limit`) |
 | GET | `/admin/overview` | Fee, sync state, admin wallet balance/allowance, totals |
-| GET | `/admin/properties` | Fractionalized properties + last distributed month |
-| GET | `/admin/properties/:tokenId/holders` | Current holders |
+| GET | `/admin/assets` | Fractionalized assets + last distributed month |
+| GET | `/admin/assets/:tokenId/holders` | Current holders |
 | POST | `/admin/distributions` | `{ tokenId, month: 'YYYY-MM', rent, excludeIssuer?, note? }` → DRAFT |
 | GET | `/admin/distributions` | List (`?tokenId&status&page&limit`) |
 | GET | `/admin/distributions/:id` | Allocations + batches, each with its `distribute` call args |

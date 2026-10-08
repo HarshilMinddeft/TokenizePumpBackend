@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const rentDistributionSchema = new mongoose.Schema(
   {
     tokenId: { type: String, required: true, index: true },
-    propertyName: { type: String, default: null },
+    assetName: { type: String, default: null },
     shareToken: { type: String, required: true, lowercase: true },
     issuer: { type: String, required: true, lowercase: true },
     totalShares: { type: String, required: true },
@@ -44,7 +44,7 @@ const rentDistributionSchema = new mongoose.Schema(
       index: true,
     },
     // `${tokenId}:${month}` while not cancelled; unset on cancel. The unique
-    // sparse index makes "one live distribution per property per month" a
+    // sparse index makes "one live distribution per asset per month" a
     // database guarantee rather than a race-prone check.
     activeKey: { type: String, default: undefined },
 

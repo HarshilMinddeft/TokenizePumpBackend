@@ -6,7 +6,7 @@
  *   rate  = rent / (totalShares * secondsInMonth)
  *   gross = rate * tokenSeconds          (tokenSeconds = Σ balance × seconds held)
  *
- * Rent for time nobody held a share — before the property was fractionalized,
+ * Rent for time nobody held a share — before the asset was fractionalized,
  * or after shares were burned (buyback, redemption) — is not paid out; it
  * stays with the admin. So is an excluded issuer's share, and the admin
  * wallet's own share (paying yourself only costs gas).
@@ -46,7 +46,7 @@ function monthBounds(month) {
  * Each holder's balance history inside [periodStart, periodEnd).
  *
  * @param {Array<{holder: string, delta: bigint, timestamp: number}>} changes
- *        Every balance change for the property with timestamp < periodEnd,
+ *        Every balance change for the asset with timestamp < periodEnd,
  *        in ledger (ordinal) order.
  * @returns {Map<string, {opening: bigint, closing: bigint, tokenSeconds: bigint, heldSeconds: number}>}
  */
@@ -179,7 +179,7 @@ function computeRentAllocation(p) {
       heldSeconds: h.heldSeconds,
       daysHeld: (h.heldSeconds / SECONDS_PER_DAY).toFixed(2),
       // Over the whole period, including time before the holder bought (or
-      // before the property existed) — so it reads low for a mid-month buyer.
+      // before the asset existed) — so it reads low for a mid-month buyer.
       averageBalance: ratio(h.tokenSeconds, periodSeconds, 4),
       // Over only the time the holder had a non-zero balance — what "how many
       // shares did they hold" usually means.

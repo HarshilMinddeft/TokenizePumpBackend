@@ -23,10 +23,10 @@ admin.use(requireAdmin);
 
 // GET    /api/rent/admin/overview
 admin.get('/overview', Controller.overview);
-// GET    /api/rent/admin/properties
-admin.get('/properties', Controller.properties);
-// GET    /api/rent/admin/properties/:tokenId/holders
-admin.get('/properties/:tokenId/holders', Validator.tokenId, Controller.holders);
+// GET    /api/rent/admin/assets
+admin.get('/assets', Controller.assets);
+// GET    /api/rent/admin/assets/:tokenId/holders
+admin.get('/assets/:tokenId/holders', Validator.tokenId, Controller.holders);
 
 // POST   /api/rent/admin/distributions   { tokenId, month, rent, excludeIssuer?, note? }
 admin.post('/distributions', Validator.createDistribution, Controller.createDistribution);

@@ -1,5 +1,5 @@
 const BaseController = require('../../core/BaseController');
-const PropertyService = require('./Service');
+const AssetService = require('./Service');
 const AppError = require('../../utils/AppError');
 
 class Controller extends BaseController {
@@ -7,13 +7,13 @@ class Controller extends BaseController {
 
   constructor() {
     super();
-    this.#service = new PropertyService();
+    this.#service = new AssetService();
   }
 
   /** @param {import('express').Response} res @param {Error} err */
   #catch(res, err) {
     if (err instanceof AppError) return this.httpError(res, err.message, err.statusCode);
-    console.error('[PropertyController]', err);
+    console.error('[AssetController]', err);
     return this.internalError(res, 'An unexpected error occurred');
   }
 
@@ -35,38 +35,38 @@ class Controller extends BaseController {
     }
   };
 
-  addProperty = async (req, res) => {
+  addAsset = async (req, res) => {
     try {
-      const property = await this.#service.addProperty(req.body);
-      return this.created(res, 'Property added successfully', { property });
+      const asset = await this.#service.addAsset(req.body);
+      return this.created(res, 'Asset added successfully', { asset });
     } catch (err) {
       return this.#catch(res, err);
     }
   };
 
-  getPropertiesByOwner = async (req, res) => {
+  getAssetsByOwner = async (req, res) => {
     try {
       const { ownerAddress } = req.query;
-      const properties = await this.#service.getPropertiesByOwner(ownerAddress);
-      return this.ok(res, 'Properties fetched', { properties });
+      const assets = await this.#service.getAssetsByOwner(ownerAddress);
+      return this.ok(res, 'Assets fetched', { assets });
     } catch (err) {
       return this.#catch(res, err);
     }
   };
 
-  getAllPropertiesSummary = async (_req, res) => {
+  getAllAssetsSummary = async (_req, res) => {
     try {
-      const properties = await this.#service.getAllPropertiesSummary();
-      return this.ok(res, 'Properties summary fetched', { properties });
+      const assets = await this.#service.getAllAssetsSummary();
+      return this.ok(res, 'Assets summary fetched', { assets });
     } catch (err) {
       return this.#catch(res, err);
     }
   };
 
-  getPropertyById = async (req, res) => {
+  getAssetById = async (req, res) => {
     try {
-      const property = await this.#service.getPropertyById(req.params.id);
-      return this.ok(res, 'Property fetched', { property });
+      const asset = await this.#service.getAssetById(req.params.id);
+      return this.ok(res, 'Asset fetched', { asset });
     } catch (err) {
       return this.#catch(res, err);
     }

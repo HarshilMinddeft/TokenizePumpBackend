@@ -1,7 +1,7 @@
 {
   "name": "fractional-rwa-backend",
   "version": "1.0.0",
-  "description": "Production backend for TrueFraction — fractional real-world asset tokenization on Sonic testnet.",
+  "description": "Production backend for VARELO — fractional real-world asset tokenization on Sonic testnet.",
   "type": "commonjs",
   "main": "src/index.js",
   "scripts": {

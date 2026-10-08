@@ -1,58 +1,58 @@
 const mongoose = require('mongoose');
 
-const propertySchema = new mongoose.Schema(
+const assetSchema = new mongoose.Schema(
   {
-    propertyId: {
+    assetId: {
       type: String,
       required: true,
       unique: true,
     },
-    propertyName: {
+    assetName: {
       type: String,
       required: true,
     },
-    propertyPrice: {
+    assetPrice: {
       type: Number,
       required: true,
     },
-    propertySize: {
+    assetSize: {
       type: Number,
       required: true,
     },
-    propertyOwnerWallet: {
+    assetOwnerWallet: {
       type: String,
       required: true,
       lowercase: true,
     },
-    propertyFeatures: {
+    assetFeatures: {
       type: String,
       required: true,
     },
-    offringDetailes: {
+    offeringDetails: {
       type: String,
       required: true,
     },
-    propertyDetailes: {
+    assetDetails: {
       type: String,
       required: true,
     },
-    propertyManagement: {
+    assetManagement: {
       type: String,
       required: true,
     },
-    locationDetailes: {
+    locationDetails: {
       type: String,
       required: true,
     },
-    propertyDocuments: {
+    assetDocuments: {
       type: [String],
       required: true,
     },
-    propertyImages: {
+    assetImages: {
       type: [String],
       required: true,
     },
-    propertyThumbImages: {
+    assetThumbImages: {
       type: [String],
       required: true,
     },
@@ -68,4 +68,4 @@ const propertySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model('3643Property', propertySchema);
+module.exports = mongoose.model('3643Asset', assetSchema);

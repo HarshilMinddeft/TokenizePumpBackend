@@ -1,6 +1,6 @@
 # Rent Distribution
 
-How TrueFraction splits a property's monthly rent across its share holders,
+How VARELO splits an asset's monthly rent across its share holders,
 and how the payout reaches them.
 
 - Calculation: `src/modules/rent/calculator.js` (pure functions, no I/O)
@@ -20,7 +20,7 @@ tokenSeconds  = Σ (balance × seconds held at that balance)      per holder
 grossAmount   = rate × tokenSeconds = rent × tokenSeconds / (totalShares × secondsInMonth)
 ```
 
-- `rent` — the property's full rent for the month, entered by the admin.
+- `rent` — the asset's full rent for the month, entered by the admin.
 - `totalShares` — shares minted at fractionalization (fixed; minting is sealed).
 - `secondsInMonth` — the calendar month in UTC (28–31 days).
 
@@ -35,7 +35,7 @@ Rent is earned per share per day, so:
 
 - a holder's payout never depends on what other holders did;
 - **rent for time nobody held a share is not paid out** — the days before the
-  property was fractionalized, and shares burned mid-month (buyback sell-back,
+  asset was fractionalized, and shares burned mid-month (buyback sell-back,
   redemption). That rent stays with the admin;
 - excluding the issuer (below) removes only the issuer's share; investors'
   amounts do not change.
@@ -123,7 +123,7 @@ All amounts in USD (stablecoin, 6 decimals). "Day 21" means 00:00 UTC on the
 
 September (30 days), rent **3,000**, 100 shares → **$1 per share-day**.
 
-- Sep 21: property fractionalized, 100 shares to the issuer, listed.
+- Sep 21: asset fractionalized, 100 shares to the issuer, listed.
 - Sep 26: Alice buys 60 from the Marketplace.
 
 | Holder | Share-days | Rent |
@@ -234,7 +234,7 @@ still add up exactly to `grossPaid`.
 
 ### 5.9 Transient negative balance
 
-If a property is fractionalized and sold in the same block, the subgraph can
+If an asset is fractionalized and sold in the same block, the subgraph can
 record the sale before the mint. Both carry the same timestamp, so no time
 accrues at the negative balance and rent is unaffected. A balance that is
 still negative at the end of the period is corrupt data and the draft is
@@ -247,7 +247,7 @@ refused.
 ```
 Admin page                         Backend                                 Chain
 ──────────                         ───────                                 ─────
-1. property + month + rent ──────► 2. checks (below)
+1. asset    + month + rent ──────► 2. checks (below)
                                    3. read ledger from subgraph
                                    4. calculate → allocations
                                    5. split payable into batches
@@ -269,7 +269,7 @@ Statuses — distribution: `DRAFT → IN_PROGRESS → COMPLETED`, or `CANCELLED`
 - The month has ended (unless `RENT_ALLOW_CURRENT_MONTH=true`, testnet only —
   the period then ends at the subgraph's latest indexed block).
 - The subgraph has no indexing errors and has indexed past the month's end.
-- No other non-cancelled distribution exists for that property and month
+- No other non-cancelled distribution exists for that asset and month
   (unique index on `tokenId:month` — cancel the draft to redo it).
 - Holdings reconcile: Σ subgraph holdings = subgraph supply = on-chain
   `totalSupply()`, read at the same block.
